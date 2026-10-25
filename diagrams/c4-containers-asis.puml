@@ -1,0 +1,23 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Диаграмма контейнеров системы "Тёплый дом" (текущее состояние)
+
+Person(user, "User", "Регистрирует датчики и управляет ими, управляет отоплением, отслеживает температуру")
+
+System_Boundary(smarthome, "Smart Home") {
+    Container(app, "Smart Home App", "Go", "Монолитное приложение: управление датчиками, управление отоплением, мониторинг температуры. REST API")
+    ContainerDb(db, "Smart Home DB", "PostgreSQL", "Хранит данные датчиков (таблица sensors)")
+}
+
+System_Ext(temperatureApi, "Temperature API", "Внешний сервис, возвращает текущую температуру по датчику или помещению")
+
+System_Ext(sensors, "Temperature Sensors", "Физические датчики, установленные в помещениях дома")
+
+Rel(user, app, "Регистрирует, изменяет, удаляет датчики, записывает значение и статус, запрашивает температуру", "HTTP, REST/JSON")
+Rel(app, db, "Читает и записывает данные датчиков")
+Rel(app, temperatureApi, "Запрашивает текущую температуру", "HTTP, REST/JSON, синхронно")
+Rel(sensors, temperatureApi, "Передают показания температуры")
+
+SHOW_LEGEND()
+@enduml

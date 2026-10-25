@@ -1,0 +1,277 @@
+openapi: 3.0.3
+info:
+  title: Device Control Service API
+  version: 1.0.0
+  description: Отправка команд устройствам и отслеживание их выполнения.
+servers:
+  - url: http://localhost:8000/api/v1
+    description: API Gateway (Kong)
+tags:
+  - name: Commands
+paths:
+  /commands:
+    get:
+      tags: [Commands]
+      summary: История команд устройства
+      parameters:
+        - name: device_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Команды
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Command'
+              examples:
+                history:
+                  summary: Последние команды котлу
+                  value:
+                    - id: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
+                      device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      user_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                      action: set_temperature
+                      params:
+                        temperature: 22
+                      source: user
+                      status: executed
+                      error: null
+                      created_at: '2026-10-25T10:00:00Z'
+                      updated_at: '2026-10-25T10:00:02Z'
+                    - id: d2e3f4a5-b6c7-4d8e-9f0a-1b2c3d4e5f6a
+                      device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      user_id: null
+                      action: turn_off
+                      params: {}
+                      source: scenario
+                      status: failed
+                      error: device did not respond
+                      created_at: '2026-10-25T23:00:00Z'
+                      updated_at: '2026-10-25T23:00:30Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Commands]
+      summary: Отправка команды устройству
+      description: Команда принимается асинхронно и отправляется устройству через MQTT. Статус выполнения можно получить по id команды.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandCreate'
+            examples:
+              setTemperature:
+                summary: Установить температуру
+                value:
+                  device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  action: set_temperature
+                  params:
+                    temperature: 22
+              openGate:
+                summary: Открыть ворота
+                value:
+                  device_id: 8c9d0e1f-2a3b-4c4d-9e5f-6a7b8c9d0e1f
+                  action: open
+                  params: {}
+      responses:
+        '202':
+          description: Команда принята
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Command'
+              examples:
+                accepted:
+                  summary: Команда принята к отправке
+                  value:
+                    id: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
+                    device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    user_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                    action: set_temperature
+                    params:
+                      temperature: 22
+                    source: user
+                    status: pending
+                    error: null
+                    created_at: '2026-10-25T10:00:00Z'
+                    updated_at: '2026-10-25T10:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Устройство не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                deviceNotFound:
+                  summary: Устройство не найдено
+                  value:
+                    error: device not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /commands/{commandId}:
+    get:
+      tags: [Commands]
+      summary: Статус команды
+      parameters:
+        - name: commandId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
+      responses:
+        '200':
+          description: Команда
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Command'
+              examples:
+                executed:
+                  summary: Команда выполнена
+                  value:
+                    id: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
+                    device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    user_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                    action: set_temperature
+                    params:
+                      temperature: 22
+                    source: user
+                    status: executed
+                    error: null
+                    created_at: '2026-10-25T10:00:00Z'
+                    updated_at: '2026-10-25T10:00:02Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Команда не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                commandNotFound:
+                  summary: Команда не найдена
+                  value:
+                    error: command not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            badRequest:
+              summary: Команда не поддерживается устройством
+              value:
+                error: 'action "set_temperature" is not supported by device'
+    Unauthorized:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            unauthorized:
+              summary: Нет или неверный токен
+              value:
+                error: invalid or missing token
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            internalError:
+              summary: Внутренняя ошибка
+              value:
+                error: internal server error
+  schemas:
+    CommandStatus:
+      type: string
+      enum: [pending, sent, executed, failed]
+    CommandSource:
+      type: string
+      enum: [user, scenario]
+    CommandCreate:
+      type: object
+      required: [device_id, action]
+      properties:
+        device_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+        params:
+          type: object
+          additionalProperties: true
+    Command:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+        action:
+          type: string
+        params:
+          type: object
+          additionalProperties: true
+        source:
+          $ref: '#/components/schemas/CommandSource'
+        status:
+          $ref: '#/components/schemas/CommandStatus'
+        error:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      properties:
+        error:
+          type: string

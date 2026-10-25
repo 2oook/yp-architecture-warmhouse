@@ -1,0 +1,444 @@
+openapi: 3.0.3
+info:
+  title: Automation Service API
+  version: 1.0.0
+  description: Настройка сценариев пользователя - правил, расписаний и действий.
+servers:
+  - url: http://localhost:8000/api/v1
+    description: API Gateway (Kong)
+tags:
+  - name: Scenarios
+paths:
+  /scenarios:
+    get:
+      tags: [Scenarios]
+      summary: Список сценариев текущего пользователя
+      responses:
+        '200':
+          description: Сценарии
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Scenario'
+              examples:
+                scenarios:
+                  summary: Сценарии пользователя
+                  value:
+                    - id: 5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b
+                      owner_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                      name: Тепло к утру
+                      enabled: true
+                      rules: []
+                      schedules:
+                        - cron: 0 6 * * *
+                          timezone: Europe/Moscow
+                      actions:
+                        - device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                          action: set_temperature
+                          params:
+                            temperature: 22
+                          order_num: 1
+                      created_at: '2026-10-25T10:00:00Z'
+                      updated_at: '2026-10-25T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Scenarios]
+      summary: Создание сценария
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScenarioInput'
+            examples:
+              ruleScenario:
+                summary: Включить отопление, если холодно
+                value:
+                  name: Не мёрзнуть
+                  enabled: true
+                  rules:
+                    - device_id: 4a5b6c7d-8e9f-4a0b-9c1d-2e3f4a5b6c7d
+                      metric: temperature
+                      operator: '<'
+                      threshold: 18
+                  schedules: []
+                  actions:
+                    - device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      action: turn_on
+                      params: {}
+                      order_num: 1
+              scheduleScenario:
+                summary: Выключить свет в полночь
+                value:
+                  name: Ночной режим
+                  enabled: true
+                  rules: []
+                  schedules:
+                    - cron: 0 0 * * *
+                      timezone: Europe/Moscow
+                  actions:
+                    - device_id: 1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f
+                      action: turn_off
+                      params: {}
+                      order_num: 1
+      responses:
+        '201':
+          description: Сценарий создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+              examples:
+                created:
+                  summary: Созданный сценарий
+                  value:
+                    id: 5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b
+                    owner_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                    name: Не мёрзнуть
+                    enabled: true
+                    rules:
+                      - device_id: 4a5b6c7d-8e9f-4a0b-9c1d-2e3f4a5b6c7d
+                        metric: temperature
+                        operator: '<'
+                        threshold: 18
+                    schedules: []
+                    actions:
+                      - device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                        action: turn_on
+                        params: {}
+                        order_num: 1
+                    created_at: '2026-10-25T10:00:00Z'
+                    updated_at: '2026-10-25T10:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /scenarios/{scenarioId}:
+    get:
+      tags: [Scenarios]
+      summary: Сценарий
+      parameters:
+        - $ref: '#/components/parameters/ScenarioId'
+      responses:
+        '200':
+          description: Сценарий
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+              examples:
+                scenario:
+                  summary: Сценарий по правилу
+                  value:
+                    id: 5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b
+                    owner_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                    name: Не мёрзнуть
+                    enabled: true
+                    rules:
+                      - device_id: 4a5b6c7d-8e9f-4a0b-9c1d-2e3f4a5b6c7d
+                        metric: temperature
+                        operator: '<'
+                        threshold: 18
+                    schedules: []
+                    actions:
+                      - device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                        action: turn_on
+                        params: {}
+                        order_num: 1
+                    created_at: '2026-10-25T10:00:00Z'
+                    updated_at: '2026-10-25T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [Scenarios]
+      summary: Изменение сценария
+      parameters:
+        - $ref: '#/components/parameters/ScenarioId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScenarioInput'
+            examples:
+              update:
+                summary: Изменение порога температуры
+                value:
+                  name: Не мёрзнуть
+                  enabled: true
+                  rules:
+                    - device_id: 4a5b6c7d-8e9f-4a0b-9c1d-2e3f4a5b6c7d
+                      metric: temperature
+                      operator: '<'
+                      threshold: 19
+                  schedules: []
+                  actions:
+                    - device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      action: turn_on
+                      params: {}
+                      order_num: 1
+      responses:
+        '200':
+          description: Сценарий обновлён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+              examples:
+                updated:
+                  summary: Обновлённый сценарий
+                  value:
+                    id: 5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b
+                    owner_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                    name: Не мёрзнуть
+                    enabled: true
+                    rules:
+                      - device_id: 4a5b6c7d-8e9f-4a0b-9c1d-2e3f4a5b6c7d
+                        metric: temperature
+                        operator: '<'
+                        threshold: 19
+                    schedules: []
+                    actions:
+                      - device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                        action: turn_on
+                        params: {}
+                        order_num: 1
+                    created_at: '2026-10-25T10:00:00Z'
+                    updated_at: '2026-10-25T11:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Scenarios]
+      summary: Удаление сценария
+      parameters:
+        - $ref: '#/components/parameters/ScenarioId'
+      responses:
+        '204':
+          description: Сценарий удалён
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /scenarios/{scenarioId}/enabled:
+    patch:
+      tags: [Scenarios]
+      summary: Включение или выключение сценария
+      parameters:
+        - $ref: '#/components/parameters/ScenarioId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+            examples:
+              disable:
+                summary: Выключить сценарий
+                value:
+                  enabled: false
+      responses:
+        '200':
+          description: Состояние изменено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+              examples:
+                disabled:
+                  summary: Выключенный сценарий
+                  value:
+                    id: 5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b
+                    owner_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                    name: Не мёрзнуть
+                    enabled: false
+                    rules:
+                      - device_id: 4a5b6c7d-8e9f-4a0b-9c1d-2e3f4a5b6c7d
+                        metric: temperature
+                        operator: '<'
+                        threshold: 19
+                    schedules: []
+                    actions:
+                      - device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                        action: turn_on
+                        params: {}
+                        order_num: 1
+                    created_at: '2026-10-25T10:00:00Z'
+                    updated_at: '2026-10-25T12:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ScenarioId:
+      name: scenarioId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            badRequest:
+              summary: В сценарии нет действий
+              value:
+                error: scenario must contain at least one action
+    Unauthorized:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            unauthorized:
+              summary: Нет или неверный токен
+              value:
+                error: invalid or missing token
+    NotFound:
+      description: Сценарий не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            notFound:
+              summary: Сценарий не найден
+              value:
+                error: scenario not found
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            internalError:
+              summary: Внутренняя ошибка
+              value:
+                error: internal server error
+  schemas:
+    Rule:
+      type: object
+      description: Условие запуска по показаниям устройства
+      required: [device_id, metric, operator, threshold]
+      properties:
+        device_id:
+          type: string
+          format: uuid
+        metric:
+          type: string
+        operator:
+          type: string
+          enum: ['<', '>', '=']
+        threshold:
+          type: number
+          format: double
+    Schedule:
+      type: object
+      description: Условие запуска по времени
+      required: [cron]
+      properties:
+        cron:
+          type: string
+        timezone:
+          type: string
+    Action:
+      type: object
+      description: Команда, которую сценарий отправляет устройству
+      required: [device_id, action]
+      properties:
+        device_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+        params:
+          type: object
+          additionalProperties: true
+        order_num:
+          type: integer
+    ScenarioInput:
+      type: object
+      required: [name, actions]
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+          default: true
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/Rule'
+        schedules:
+          type: array
+          items:
+            $ref: '#/components/schemas/Schedule'
+        actions:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Action'
+    Scenario:
+      allOf:
+        - $ref: '#/components/schemas/ScenarioInput'
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            owner_id:
+              type: string
+              format: uuid
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+    Error:
+      type: object
+      properties:
+        error:
+          type: string

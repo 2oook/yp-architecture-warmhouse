@@ -1,0 +1,30 @@
+@startuml
+title Диаграмма кода Temperature Service (as-is)
+
+skinparam classAttributeIconSize 0
+
+package "services" {
+    class TemperatureService {
+        +BaseURL : string
+        +HTTPClient : *http.Client
+        --
+        +NewTemperatureService(baseURL string) : *TemperatureService
+        +GetTemperature(location string) : (*TemperatureResponse, error)
+        +GetTemperatureByID(sensorID string) : (*TemperatureResponse, error)
+    }
+
+    class TemperatureResponse {
+        +Value : float64
+        +Unit : string
+        +Timestamp : time.Time
+        +Location : string
+        +Status : string
+        +SensorID : string
+        +SensorType : string
+        +Description : string
+    }
+}
+
+TemperatureService ..> TemperatureResponse : возвращает
+
+@enduml

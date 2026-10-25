@@ -1,0 +1,373 @@
+openapi: 3.0.3
+info:
+  title: Device Registry Service API
+  version: 1.0.0
+  description: Подключение, настройка и удаление устройств пользователя, справочник типов устройств.
+servers:
+  - url: http://localhost:8000/api/v1
+    description: API Gateway (Kong)
+tags:
+  - name: Device Types
+  - name: Devices
+paths:
+  /device-types:
+    get:
+      tags: [Device Types]
+      summary: Список поддерживаемых типов устройств
+      parameters:
+        - name: category
+          in: query
+          schema:
+            $ref: '#/components/schemas/DeviceCategory'
+      responses:
+        '200':
+          description: Типы устройств
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceType'
+              examples:
+                heatingTypes:
+                  summary: Типы устройств отопления
+                  value:
+                    - id: 9b2e7c10-1d3a-4f5b-8c6d-7e8f9a0b1c2d
+                      category: heating
+                      vendor: ThermoPartner
+                      model: TP-100
+                      protocol: MQTT
+                      supported_commands: [turn_on, turn_off, set_temperature]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /devices:
+    get:
+      tags: [Devices]
+      summary: Список устройств текущего пользователя
+      responses:
+        '200':
+          description: Устройства
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+              examples:
+                devices:
+                  summary: Устройства пользователя
+                  value:
+                    - id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      owner_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                      device_type_id: 9b2e7c10-1d3a-4f5b-8c6d-7e8f9a0b1c2d
+                      name: Котёл
+                      location: Kitchen
+                      serial_number: TP100-000123
+                      settings:
+                        target_temperature: 22
+                      status: connected
+                      created_at: '2026-10-25T10:00:00Z'
+                      updated_at: '2026-10-25T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Devices]
+      summary: Подключение устройства
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceCreate'
+            examples:
+              connect:
+                summary: Подключение котла
+                value:
+                  device_type_id: 9b2e7c10-1d3a-4f5b-8c6d-7e8f9a0b1c2d
+                  serial_number: TP100-000123
+                  name: Котёл
+                  location: Kitchen
+      responses:
+        '201':
+          description: Устройство подключено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              examples:
+                connected:
+                  summary: Подключённое устройство
+                  value:
+                    id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    owner_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                    device_type_id: 9b2e7c10-1d3a-4f5b-8c6d-7e8f9a0b1c2d
+                    name: Котёл
+                    location: Kitchen
+                    serial_number: TP100-000123
+                    settings: {}
+                    status: connected
+                    created_at: '2026-10-25T10:00:00Z'
+                    updated_at: '2026-10-25T10:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Устройство с таким серийным номером уже подключено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                conflict:
+                  summary: Серийный номер уже используется
+                  value:
+                    error: device with this serial number already connected
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /devices/{deviceId}:
+    get:
+      tags: [Devices]
+      summary: Данные устройства
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: Устройство
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              examples:
+                device:
+                  summary: Котёл на кухне
+                  value:
+                    id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    owner_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                    device_type_id: 9b2e7c10-1d3a-4f5b-8c6d-7e8f9a0b1c2d
+                    name: Котёл
+                    location: Kitchen
+                    serial_number: TP100-000123
+                    settings:
+                      target_temperature: 22
+                    status: connected
+                    created_at: '2026-10-25T10:00:00Z'
+                    updated_at: '2026-10-25T10:30:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Devices]
+      summary: Настройка устройства
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceUpdate'
+            examples:
+              settings:
+                summary: Переименование и настройка
+                value:
+                  name: Котёл на кухне
+                  settings:
+                    target_temperature: 22
+      responses:
+        '200':
+          description: Устройство обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              examples:
+                updated:
+                  summary: Обновлённое устройство
+                  value:
+                    id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    owner_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                    device_type_id: 9b2e7c10-1d3a-4f5b-8c6d-7e8f9a0b1c2d
+                    name: Котёл на кухне
+                    location: Kitchen
+                    serial_number: TP100-000123
+                    settings:
+                      target_temperature: 22
+                    status: connected
+                    created_at: '2026-10-25T10:00:00Z'
+                    updated_at: '2026-10-25T10:30:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Devices]
+      summary: Удаление устройства
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '204':
+          description: Устройство удалено
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    DeviceId:
+      name: deviceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            badRequest:
+              summary: Не заполнено обязательное поле
+              value:
+                error: 'field "serial_number" is required'
+    Unauthorized:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            unauthorized:
+              summary: Нет или неверный токен
+              value:
+                error: invalid or missing token
+    NotFound:
+      description: Устройство не найдено
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            notFound:
+              summary: Устройство не найдено
+              value:
+                error: device not found
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            internalError:
+              summary: Внутренняя ошибка
+              value:
+                error: internal server error
+  schemas:
+    DeviceCategory:
+      type: string
+      enum: [heating, light, gate, camera, sensor]
+    DeviceStatus:
+      type: string
+      enum: [connected, disconnected]
+    DeviceType:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        category:
+          $ref: '#/components/schemas/DeviceCategory'
+        vendor:
+          type: string
+        model:
+          type: string
+        protocol:
+          type: string
+        supported_commands:
+          type: array
+          items:
+            type: string
+    DeviceCreate:
+      type: object
+      required: [device_type_id, serial_number, name]
+      properties:
+        device_type_id:
+          type: string
+          format: uuid
+        serial_number:
+          type: string
+        name:
+          type: string
+        location:
+          type: string
+    DeviceUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        location:
+          type: string
+        settings:
+          type: object
+          additionalProperties: true
+    Device:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        owner_id:
+          type: string
+          format: uuid
+        device_type_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        location:
+          type: string
+        serial_number:
+          type: string
+        settings:
+          type: object
+          additionalProperties: true
+        status:
+          $ref: '#/components/schemas/DeviceStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      properties:
+        error:
+          type: string

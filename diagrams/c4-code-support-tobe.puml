@@ -1,0 +1,75 @@
+@startuml
+title Диаграмма кода Customer Support Service (to-be)
+
+skinparam classAttributeIconSize 0
+
+package "handlers" {
+    class TicketController {
+        -service : *TicketService
+        --
+        +CreateTicket(c *gin.Context)
+        +GetTicket(c *gin.Context)
+        +AddReply(c *gin.Context)
+        +ChangeStatus(c *gin.Context)
+    }
+}
+
+package "service" {
+    class TicketService {
+        -repo : TicketRepository
+        --
+        +CreateTicket(ctx context.Context, userID string, subject string, text string) : (Ticket, error)
+        +GetTicket(ctx context.Context, id string) : (Ticket, error)
+        +AddReply(ctx context.Context, ticketID string, authorID string, text string) : (Reply, error)
+        +ChangeStatus(ctx context.Context, id string, status TicketStatus) : error
+    }
+}
+
+package "repository" {
+    interface TicketRepository {
+        +Save(ctx context.Context, t Ticket) : error
+        +GetByID(ctx context.Context, id string) : (Ticket, error)
+        +AddReply(ctx context.Context, r Reply) : error
+        +UpdateStatus(ctx context.Context, id string, status TicketStatus) : error
+    }
+
+    class PostgresTicketRepository {
+        -pool : *pgxpool.Pool
+    }
+}
+
+package "models" {
+    class Ticket {
+        +ID : string
+        +UserID : string
+        +Subject : string
+        +Text : string
+        +Status : TicketStatus
+        +Replies : []Reply
+        +CreatedAt : time.Time
+    }
+
+    class Reply {
+        +ID : string
+        +TicketID : string
+        +AuthorID : string
+        +Text : string
+        +CreatedAt : time.Time
+    }
+
+    enum TicketStatus {
+        OPEN
+        IN_PROGRESS
+        CLOSED
+    }
+}
+
+TicketController --> TicketService : вызывает
+TicketService --> TicketRepository : использует
+PostgresTicketRepository ..|> TicketRepository
+TicketService ..> Ticket
+TicketService ..> Reply
+Ticket "1" *-- "0..*" Reply
+Ticket --> TicketStatus
+
+@enduml

@@ -1,0 +1,35 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Диаграмма компонентов Automation Service (to-be)
+
+Container(apiGateway, "API Gateway", "Kong", "Единая точка входа")
+
+Container_Boundary(automationService, "Automation Service") {
+    Component(scenarioController, "Scenario Controller", "Go, REST", "Эндпоинты создания, изменения, удаления, просмотра сценариев")
+    Component(scenarioService, "Scenario Service", "Go", "Настройка сценариев: правила и расписания")
+    Component(scenarioRepository, "Scenario Repository", "Go", "Доступ к сценариям")
+    Component(eventConsumer, "Telemetry Event Consumer", "Go, Kafka", "Получает новые показания")
+    Component(ruleEngine, "Rule Engine", "Go", "Проверяет условия правил по показаниям")
+    Component(scheduler, "Scheduler", "Go", "Запускает сценарии по расписанию")
+    Component(commandPublisher, "Command Publisher", "Go, Kafka", "Публикация команд по сценариям")
+}
+
+ContainerDb(automationDb, "Automation DB", "PostgreSQL", "Сценарии, правила, расписания")
+ContainerQueue(eventBus, "Event Bus", "Kafka", "Обмен событиями между сервисами")
+
+Rel(apiGateway, scenarioController, "Настройка сценариев", "REST/JSON")
+Rel(scenarioController, scenarioService, "Создаёт, изменяет, удаляет сценарии")
+Rel(scenarioService, scenarioRepository, "Читает и записывает сценарии")
+Rel(scenarioRepository, automationDb, "Читает и записывает", "SQL")
+
+Rel(eventBus, eventConsumer, "Новые показания", "Kafka")
+Rel(eventConsumer, ruleEngine, "Передаёт показание")
+Rel(ruleEngine, scenarioRepository, "Читает правила")
+Rel(scheduler, scenarioRepository, "Читает расписания")
+Rel(ruleEngine, commandPublisher, "Команда при срабатывании правила")
+Rel(scheduler, commandPublisher, "Команда по расписанию")
+Rel(commandPublisher, eventBus, "Команды устройствам", "Kafka")
+
+SHOW_LEGEND()
+@enduml
