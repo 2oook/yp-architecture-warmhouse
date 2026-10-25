@@ -1,0 +1,22 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Диаграмма компонентов Customer Support Service (to-be)
+
+Container(apiGateway, "API Gateway", "Kong", "Единая точка входа")
+
+Container_Boundary(supportService, "Customer Support Service") {
+    Component(ticketController, "Ticket Controller", "Go, REST", "Эндпоинты создания и просмотра обращений, ответов, смены статуса")
+    Component(ticketService, "Ticket Service", "Go", "Создание обращений, ответы, смена статуса")
+    Component(ticketRepository, "Ticket Repository", "Go", "Доступ к данным обращений")
+}
+
+ContainerDb(supportDb, "Support DB", "PostgreSQL", "Обращения, ответы")
+
+Rel(apiGateway, ticketController, "Обращения", "REST/JSON")
+Rel(ticketController, ticketService, "Создаёт обращения, отвечает, меняет статус")
+Rel(ticketService, ticketRepository, "Читает и записывает обращения")
+Rel(ticketRepository, supportDb, "Читает и записывает", "SQL")
+
+SHOW_LEGEND()
+@enduml

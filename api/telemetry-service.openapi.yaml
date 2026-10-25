@@ -1,0 +1,196 @@
+openapi: 3.0.3
+info:
+  title: Telemetry Service API
+  version: 1.0.0
+  description: Просмотр текущих показаний и истории телеметрии устройств.
+servers:
+  - url: http://localhost:8000/api/v1
+    description: API Gateway (Kong)
+tags:
+  - name: Telemetry
+paths:
+  /telemetry/latest:
+    get:
+      tags: [Telemetry]
+      summary: Последние показания устройства по каждой метрике
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdQuery'
+      responses:
+        '200':
+          description: Последние показания
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TelemetryRecord'
+              examples:
+                latest:
+                  summary: Текущие показания датчика
+                  value:
+                    - device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      metric: temperature
+                      value: 21.5
+                      unit: °C
+                      recorded_at: '2026-10-25T10:00:00Z'
+                    - device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      metric: humidity
+                      value: 45
+                      unit: '%'
+                      recorded_at: '2026-10-25T10:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /telemetry:
+    get:
+      tags: [Telemetry]
+      summary: История показаний устройства за период
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdQuery'
+        - name: metric
+          in: query
+          schema:
+            type: string
+          example: temperature
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+          example: '2026-10-25T00:00:00Z'
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+          example: '2026-10-25T12:00:00Z'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Показания
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TelemetryRecord'
+              examples:
+                history:
+                  summary: Температура за утро
+                  value:
+                    - device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      metric: temperature
+                      value: 18.2
+                      unit: °C
+                      recorded_at: '2026-10-25T06:00:00Z'
+                    - device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      metric: temperature
+                      value: 20.1
+                      unit: °C
+                      recorded_at: '2026-10-25T08:00:00Z'
+                    - device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      metric: temperature
+                      value: 21.5
+                      unit: °C
+                      recorded_at: '2026-10-25T10:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    DeviceIdQuery:
+      name: device_id
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            badRequest:
+              summary: Неверный период
+              value:
+                error: '"from" must be earlier than "to"'
+    Unauthorized:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            unauthorized:
+              summary: Нет или неверный токен
+              value:
+                error: invalid or missing token
+    NotFound:
+      description: Устройство не найдено
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            notFound:
+              summary: Нет данных по устройству
+              value:
+                error: device not found
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            internalError:
+              summary: Внутренняя ошибка
+              value:
+                error: internal server error
+  schemas:
+    TelemetryRecord:
+      type: object
+      properties:
+        device_id:
+          type: string
+          format: uuid
+        metric:
+          type: string
+        value:
+          type: number
+          format: double
+        unit:
+          type: string
+        recorded_at:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      properties:
+        error:
+          type: string

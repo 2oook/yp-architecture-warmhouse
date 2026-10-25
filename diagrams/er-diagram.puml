@@ -1,0 +1,159 @@
+@startuml
+title ER-диаграмма экосистемы "Тёплый дом"
+
+hide circle
+skinparam linetype ortho
+
+package "Identity DB" {
+    entity "User" as user {
+        *id : UUID <<PK>>
+        --
+        *email : VARCHAR <<unique>>
+        *password_hash : VARCHAR
+        name : VARCHAR
+        phone : VARCHAR
+        *created_at : TIMESTAMP
+    }
+}
+
+package "Support DB" {
+    entity "Ticket" as ticket {
+        *id : UUID <<PK>>
+        --
+        *user_id : UUID <<ref User>>
+        *subject : VARCHAR
+        *text : TEXT
+        *status : VARCHAR
+        *created_at : TIMESTAMP
+        *updated_at : TIMESTAMP
+    }
+
+    entity "Reply" as reply {
+        *id : UUID <<PK>>
+        --
+        *ticket_id : UUID <<FK>>
+        *author_id : UUID <<ref User>>
+        *text : TEXT
+        *created_at : TIMESTAMP
+    }
+}
+
+package "Device Registry DB" {
+    entity "DeviceType" as deviceType {
+        *id : UUID <<PK>>
+        --
+        *category : VARCHAR
+        *vendor : VARCHAR
+        *model : VARCHAR
+        *protocol : VARCHAR
+        supported_commands : JSONB
+    }
+
+    entity "Device" as device {
+        *id : UUID <<PK>>
+        --
+        *owner_id : UUID <<ref User>>
+        *device_type_id : UUID <<FK>>
+        *name : VARCHAR
+        location : VARCHAR
+        *serial_number : VARCHAR <<unique>>
+        settings : JSONB
+        *status : VARCHAR
+        *created_at : TIMESTAMP
+        *updated_at : TIMESTAMP
+    }
+}
+
+package "Device Control DB" {
+    entity "Command" as command {
+        *id : UUID <<PK>>
+        --
+        *device_id : UUID <<ref Device>>
+        user_id : UUID <<ref User>>
+        *action : VARCHAR
+        params : JSONB
+        *source : VARCHAR
+        *status : VARCHAR
+        error : TEXT
+        *created_at : TIMESTAMP
+        *updated_at : TIMESTAMP
+    }
+}
+
+package "Telemetry DB" {
+    entity "TelemetryRecord" as telemetry {
+        *id : BIGINT <<PK>>
+        --
+        *device_id : UUID <<ref Device>>
+        *metric : VARCHAR
+        *value : DOUBLE
+        unit : VARCHAR
+        *recorded_at : TIMESTAMP
+    }
+}
+
+package "Automation DB" {
+    entity "Scenario" as scenario {
+        *id : UUID <<PK>>
+        --
+        *owner_id : UUID <<ref User>>
+        *name : VARCHAR
+        *enabled : BOOLEAN
+        *created_at : TIMESTAMP
+        *updated_at : TIMESTAMP
+    }
+
+    entity "Rule" as rule {
+        *id : UUID <<PK>>
+        --
+        *scenario_id : UUID <<FK>>
+        *device_id : UUID <<ref Device>>
+        *metric : VARCHAR
+        *operator : VARCHAR
+        *threshold : DOUBLE
+    }
+
+    entity "Schedule" as schedule {
+        *id : UUID <<PK>>
+        --
+        *scenario_id : UUID <<FK>>
+        *cron : VARCHAR
+        *timezone : VARCHAR
+    }
+
+    entity "Action" as action {
+        *id : UUID <<PK>>
+        --
+        *scenario_id : UUID <<FK>>
+        *device_id : UUID <<ref Device>>
+        *action : VARCHAR
+        params : JSONB
+        *order_num : INT
+    }
+}
+
+' Связи внутри одной БД (внешние ключи)
+ticket ||--o{ reply
+deviceType ||--o{ device
+scenario ||--o{ rule
+scenario ||--o{ schedule
+scenario ||--o{ action
+
+' Связи между сервисами (только идентификаторы, без внешних ключей)
+user ||..o{ device
+user ||..o{ ticket
+user ||..o{ reply
+user ||..o{ scenario
+user |o..o{ command
+device ||..o{ command
+device ||..o{ telemetry
+device ||..o{ rule
+device ||..o{ action
+
+legend right
+    Сплошная линия - связь внутри одной БД (внешний ключ)
+    Пунктирная линия - связь между сервисами (хранится только идентификатор)
+    * - обязательный атрибут
+endlegend
+
+@enduml

@@ -1,0 +1,339 @@
+openapi: 3.0.3
+info:
+  title: Customer Support Service API
+  version: 1.0.0
+  description: Обращения пользователей в поддержку и ответы на них.
+servers:
+  - url: http://localhost:8000/api/v1
+    description: API Gateway (Kong)
+tags:
+  - name: Tickets
+paths:
+  /tickets:
+    get:
+      tags: [Tickets]
+      summary: Список обращений (пользователь видит свои, сотрудник поддержки - все)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/TicketStatus'
+      responses:
+        '200':
+          description: Список обращений
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ticket'
+              examples:
+                tickets:
+                  summary: Открытые обращения
+                  value:
+                    - id: 7a8b9c0d-1e2f-4a3b-9c4d-5e6f7a8b9c0d
+                      user_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                      subject: Не подключается датчик
+                      text: Датчик температуры в спальне не появляется в списке устройств
+                      status: open
+                      replies: []
+                      created_at: '2026-10-25T10:00:00Z'
+                      updated_at: '2026-10-25T10:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Tickets]
+      summary: Создание обращения
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketCreate'
+            examples:
+              create:
+                summary: Новое обращение
+                value:
+                  subject: Не подключается датчик
+                  text: Датчик температуры в спальне не появляется в списке устройств
+      responses:
+        '201':
+          description: Обращение создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+              examples:
+                created:
+                  summary: Созданное обращение
+                  value:
+                    id: 7a8b9c0d-1e2f-4a3b-9c4d-5e6f7a8b9c0d
+                    user_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                    subject: Не подключается датчик
+                    text: Датчик температуры в спальне не появляется в списке устройств
+                    status: open
+                    replies: []
+                    created_at: '2026-10-25T10:00:00Z'
+                    updated_at: '2026-10-25T10:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /tickets/{ticketId}:
+    get:
+      tags: [Tickets]
+      summary: Обращение с ответами
+      parameters:
+        - $ref: '#/components/parameters/TicketId'
+      responses:
+        '200':
+          description: Обращение
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+              examples:
+                ticket:
+                  summary: Обращение с ответом поддержки
+                  value:
+                    id: 7a8b9c0d-1e2f-4a3b-9c4d-5e6f7a8b9c0d
+                    user_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                    subject: Не подключается датчик
+                    text: Датчик температуры в спальне не появляется в списке устройств
+                    status: in_progress
+                    replies:
+                      - id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
+                        ticket_id: 7a8b9c0d-1e2f-4a3b-9c4d-5e6f7a8b9c0d
+                        author_id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+                        text: Проверьте, что датчик подключён к Wi-Fi, и нажмите кнопку сопряжения
+                        created_at: '2026-10-25T10:15:00Z'
+                    created_at: '2026-10-25T10:00:00Z'
+                    updated_at: '2026-10-25T10:15:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /tickets/{ticketId}/replies:
+    post:
+      tags: [Tickets]
+      summary: Добавление ответа в обращение
+      parameters:
+        - $ref: '#/components/parameters/TicketId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplyCreate'
+            examples:
+              reply:
+                summary: Ответ сотрудника поддержки
+                value:
+                  text: Проверьте, что датчик подключён к Wi-Fi, и нажмите кнопку сопряжения
+      responses:
+        '201':
+          description: Ответ добавлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reply'
+              examples:
+                created:
+                  summary: Добавленный ответ
+                  value:
+                    id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
+                    ticket_id: 7a8b9c0d-1e2f-4a3b-9c4d-5e6f7a8b9c0d
+                    author_id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+                    text: Проверьте, что датчик подключён к Wi-Fi, и нажмите кнопку сопряжения
+                    created_at: '2026-10-25T10:15:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /tickets/{ticketId}/status:
+    patch:
+      tags: [Tickets]
+      summary: Смена статуса обращения
+      parameters:
+        - $ref: '#/components/parameters/TicketId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/TicketStatus'
+            examples:
+              close:
+                summary: Закрытие обращения
+                value:
+                  status: closed
+      responses:
+        '200':
+          description: Статус изменён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+              examples:
+                closed:
+                  summary: Закрытое обращение
+                  value:
+                    id: 7a8b9c0d-1e2f-4a3b-9c4d-5e6f7a8b9c0d
+                    user_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+                    subject: Не подключается датчик
+                    text: Датчик температуры в спальне не появляется в списке устройств
+                    status: closed
+                    replies: []
+                    created_at: '2026-10-25T10:00:00Z'
+                    updated_at: '2026-10-25T11:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    TicketId:
+      name: ticketId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 7a8b9c0d-1e2f-4a3b-9c4d-5e6f7a8b9c0d
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            badRequest:
+              summary: Некорректное значение поля
+              value:
+                error: 'invalid value for field "status"'
+    Unauthorized:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            unauthorized:
+              summary: Нет или неверный токен
+              value:
+                error: invalid or missing token
+    NotFound:
+      description: Обращение не найдено
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            notFound:
+              summary: Обращение не найдено
+              value:
+                error: ticket not found
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            internalError:
+              summary: Внутренняя ошибка
+              value:
+                error: internal server error
+  schemas:
+    TicketStatus:
+      type: string
+      enum: [open, in_progress, closed]
+    TicketCreate:
+      type: object
+      required: [subject, text]
+      properties:
+        subject:
+          type: string
+        text:
+          type: string
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        subject:
+          type: string
+        text:
+          type: string
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+        replies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reply'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ReplyCreate:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+    Reply:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ticket_id:
+          type: string
+          format: uuid
+        author_id:
+          type: string
+          format: uuid
+        text:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      properties:
+        error:
+          type: string

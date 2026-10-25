@@ -1,0 +1,328 @@
+asyncapi: 2.6.0
+info:
+  title: Smart Home Ecosystem Async API
+  version: 1.0.0
+  description: |
+    Асинхронное взаимодействие экосистемы "Тёплый дом":
+    - события между микросервисами через Kafka;
+    - обмен с устройствами через MQTT.
+
+servers:
+  kafka:
+    url: kafka:9092
+    protocol: kafka
+    description: Event Bus - обмен событиями между сервисами
+  mqtt:
+    url: mqtt://device-broker:8883
+    protocol: mqtt
+    description: Device Broker - обмен сообщениями с устройствами (MQTT over TLS)
+
+channels:
+  device.events:
+    servers: [kafka]
+    description: События об устройствах. Публикует Device Registry Service, читает Device Control Service.
+    subscribe:
+      operationId: onDeviceEvent
+      summary: Устройство подключено, изменено или удалено
+      message:
+        oneOf:
+          - $ref: '#/components/messages/DeviceConnected'
+          - $ref: '#/components/messages/DeviceUpdated'
+          - $ref: '#/components/messages/DeviceRemoved'
+
+  telemetry.readings:
+    servers: [kafka]
+    description: Новые показания устройств. Публикует Telemetry Service, читает Automation Service.
+    subscribe:
+      operationId: onTelemetryRecorded
+      summary: Получено новое показание устройства
+      message:
+        $ref: '#/components/messages/TelemetryRecorded'
+
+  device.commands:
+    servers: [kafka]
+    description: Команды по сценариям. Публикует Automation Service, читает Device Control Service.
+    subscribe:
+      operationId: onCommandRequested
+      summary: Сценарий запросил выполнение команды
+      message:
+        $ref: '#/components/messages/CommandRequested'
+
+  devices/{deviceId}/telemetry:
+    servers: [mqtt]
+    description: Показания от устройства. Публикует устройство, читает Telemetry Service.
+    parameters:
+      deviceId:
+        $ref: '#/components/parameters/deviceId'
+    publish:
+      operationId: sendDeviceTelemetry
+      summary: Устройство отправляет показание
+      message:
+        $ref: '#/components/messages/DeviceTelemetry'
+
+  devices/{deviceId}/commands:
+    servers: [mqtt]
+    description: Команды устройству. Публикует Device Control Service, читает устройство.
+    parameters:
+      deviceId:
+        $ref: '#/components/parameters/deviceId'
+    subscribe:
+      operationId: receiveDeviceCommand
+      summary: Устройство получает команду
+      message:
+        $ref: '#/components/messages/DeviceCommand'
+
+  devices/{deviceId}/commands/ack:
+    servers: [mqtt]
+    description: Подтверждения выполнения команд. Публикует устройство, читает Device Control Service.
+    parameters:
+      deviceId:
+        $ref: '#/components/parameters/deviceId'
+    publish:
+      operationId: sendCommandAck
+      summary: Устройство подтверждает выполнение команды
+      message:
+        $ref: '#/components/messages/CommandAck'
+
+components:
+  parameters:
+    deviceId:
+      description: Идентификатор устройства
+      schema:
+        type: string
+        format: uuid
+
+  messages:
+    DeviceConnected:
+      name: DeviceConnected
+      title: Устройство подключено
+      examples:
+        - name: heatingConnected
+          summary: Подключён котёл
+          payload:
+            event_type: DeviceConnected
+            device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+            owner_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+            category: heating
+            protocol: MQTT
+            topic: devices/3fa85f64-5717-4562-b3fc-2c963f66afa6
+            occurred_at: '2026-10-25T10:00:00Z'
+      payload:
+        $ref: '#/components/schemas/DeviceEventPayload'
+    DeviceUpdated:
+      name: DeviceUpdated
+      title: Устройство изменено
+      examples:
+        - name: heatingUpdated
+          summary: Изменены настройки котла
+          payload:
+            event_type: DeviceUpdated
+            device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+            owner_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+            category: heating
+            protocol: MQTT
+            topic: devices/3fa85f64-5717-4562-b3fc-2c963f66afa6
+            occurred_at: '2026-10-25T10:30:00Z'
+      payload:
+        $ref: '#/components/schemas/DeviceEventPayload'
+    DeviceRemoved:
+      name: DeviceRemoved
+      title: Устройство удалено
+      examples:
+        - name: heatingRemoved
+          summary: Котёл удалён
+          payload:
+            event_type: DeviceRemoved
+            device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+            occurred_at: '2026-10-25T12:00:00Z'
+      payload:
+        type: object
+        required: [event_type, device_id, occurred_at]
+        properties:
+          event_type:
+            type: string
+            const: DeviceRemoved
+          device_id:
+            type: string
+            format: uuid
+          occurred_at:
+            type: string
+            format: date-time
+    TelemetryRecorded:
+      name: TelemetryRecorded
+      title: Новое показание
+      examples:
+        - name: lowTemperature
+          summary: Температура в спальне 17.5 °C
+          payload:
+            device_id: 4a5b6c7d-8e9f-4a0b-9c1d-2e3f4a5b6c7d
+            owner_id: 6f1c2a3e-8b4d-4c1a-9e2f-1a2b3c4d5e6f
+            metric: temperature
+            value: 17.5
+            unit: °C
+            recorded_at: '2026-10-25T06:00:00Z'
+      payload:
+        type: object
+        required: [device_id, owner_id, metric, value, recorded_at]
+        properties:
+          device_id:
+            type: string
+            format: uuid
+          owner_id:
+            type: string
+            format: uuid
+          metric:
+            type: string
+            example: temperature
+          value:
+            type: number
+            example: 17.5
+          unit:
+            type: string
+            example: °C
+          recorded_at:
+            type: string
+            format: date-time
+    CommandRequested:
+      name: CommandRequested
+      title: Запрос команды по сценарию
+      examples:
+        - name: turnOnHeating
+          summary: Сценарий включает отопление
+          payload:
+            scenario_id: 5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b
+            device_id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+            action: turn_on
+            params: {}
+            requested_at: '2026-10-25T06:00:01Z'
+      payload:
+        type: object
+        required: [scenario_id, device_id, action, requested_at]
+        properties:
+          scenario_id:
+            type: string
+            format: uuid
+          device_id:
+            type: string
+            format: uuid
+          action:
+            type: string
+            example: set_temperature
+          params:
+            type: object
+            additionalProperties: true
+            example:
+              temperature: 22
+          requested_at:
+            type: string
+            format: date-time
+    DeviceTelemetry:
+      name: DeviceTelemetry
+      title: Показание устройства
+      examples:
+        - name: temperatureReading
+          summary: Датчик отправляет температуру
+          payload:
+            metric: temperature
+            value: 17.5
+            unit: °C
+            timestamp: '2026-10-25T06:00:00Z'
+      payload:
+        type: object
+        required: [metric, value, timestamp]
+        properties:
+          metric:
+            type: string
+            example: temperature
+          value:
+            type: number
+            example: 21.5
+          unit:
+            type: string
+            example: °C
+          timestamp:
+            type: string
+            format: date-time
+    DeviceCommand:
+      name: DeviceCommand
+      title: Команда устройству
+      examples:
+        - name: setTemperature
+          summary: Установить температуру 22 °C
+          payload:
+            command_id: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
+            action: set_temperature
+            params:
+              temperature: 22
+      payload:
+        type: object
+        required: [command_id, action]
+        properties:
+          command_id:
+            type: string
+            format: uuid
+          action:
+            type: string
+            example: turn_on
+          params:
+            type: object
+            additionalProperties: true
+    CommandAck:
+      name: CommandAck
+      title: Подтверждение команды
+      examples:
+        - name: executed
+          summary: Команда выполнена
+          payload:
+            command_id: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
+            status: executed
+            timestamp: '2026-10-25T10:00:02Z'
+        - name: failed
+          summary: Команда не выполнена
+          payload:
+            command_id: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f
+            status: failed
+            error: target temperature out of range
+            timestamp: '2026-10-25T10:00:02Z'
+      payload:
+        type: object
+        required: [command_id, status, timestamp]
+        properties:
+          command_id:
+            type: string
+            format: uuid
+          status:
+            type: string
+            enum: [executed, failed]
+          error:
+            type: string
+          timestamp:
+            type: string
+            format: date-time
+
+  schemas:
+    DeviceEventPayload:
+      type: object
+      required: [event_type, device_id, owner_id, occurred_at]
+      properties:
+        event_type:
+          type: string
+          enum: [DeviceConnected, DeviceUpdated]
+        device_id:
+          type: string
+          format: uuid
+        owner_id:
+          type: string
+          format: uuid
+        category:
+          type: string
+          enum: [heating, light, gate, camera, sensor]
+        protocol:
+          type: string
+          example: MQTT
+        topic:
+          type: string
+          example: devices/3fa85f64-5717-4562-b3fc-2c963f66afa6
+        occurred_at:
+          type: string
+          format: date-time

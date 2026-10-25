@@ -1,0 +1,30 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Диаграмма компонентов Smart Home App (текущее состояние)
+
+Person(user, "User", "Регистрирует датчики и управляет ими, управляет отоплением, отслеживает температуру")
+
+Container_Boundary(app, "Smart Home App") {
+    Component(router, "Router", "Go", "Принимает HTTP-запросы, маршрутизирует /api/v1/sensors, отвечает на /health (main.go)")
+    Component(sensorHandler, "Sensor Handler", "Go", "Обрабатывает запросы: регистрация, изменение, удаление датчиков, обновление значения и статуса, получение температуры (handlers/sensors.go)")
+    Component(sensorRepository, "Sensor Repository", "Go", "Выполняет SQL-запросы к таблице sensors (db/db.go)")
+    Component(temperatureClient, "Temperature Service", "Go", "HTTP-клиент для получения текущей температуры (services/temperature_service.go)")
+}
+
+ContainerDb(db, "Smart Home DB", "PostgreSQL", "Хранит данные датчиков (таблица sensors)")
+
+System_Ext(temperatureApi, "Temperature API", "Внешний сервис, возвращает текущую температуру по датчику или помещению")
+
+System_Ext(sensors, "Temperature Sensors", "Физические датчики, установленные в помещениях дома")
+
+Rel(user, router, "Отправляет запросы", "HTTP, REST/JSON")
+Rel(router, sensorHandler, "Передаёт запросы к /api/v1/sensors")
+Rel(sensorHandler, sensorRepository, "Читает и записывает данные датчиков")
+Rel(sensorHandler, temperatureClient, "Запрашивает текущую температуру")
+Rel(sensorRepository, db, "Читает и записывает данные")
+Rel(temperatureClient, temperatureApi, "GET /temperature/{id}, GET /temperature?location=", "HTTP, REST/JSON, синхронно")
+Rel(sensors, temperatureApi, "Передают показания температуры")
+
+SHOW_LEGEND()
+@enduml

@@ -1,0 +1,26 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Диаграмма компонентов Device Registry Service (to-be)
+
+Container(apiGateway, "API Gateway", "Kong", "Единая точка входа")
+
+Container_Boundary(registryService, "Device Registry Service") {
+    Component(deviceController, "Device Controller", "Go, REST", "Эндпоинты подключения, настройки, удаления, просмотра устройств")
+    Component(deviceService, "Device Service", "Go", "Подключение устройства, проверка типа, привязка к пользователю, настройка")
+    Component(deviceRepository, "Device Repository", "Go", "Доступ к данным устройств")
+    Component(eventPublisher, "Device Event Publisher", "Go, Kafka", "Публикация событий об устройствах")
+}
+
+ContainerDb(registryDb, "Device Registry DB", "PostgreSQL", "Устройства, типы, владельцы, настройки")
+ContainerQueue(eventBus, "Event Bus", "Kafka", "Обмен событиями между сервисами")
+
+Rel(apiGateway, deviceController, "Подключение и настройка устройств", "REST/JSON")
+Rel(deviceController, deviceService, "Подключает, настраивает, удаляет устройство")
+Rel(deviceService, deviceRepository, "Читает и записывает устройства")
+Rel(deviceService, eventPublisher, "Передаёт события об изменениях")
+Rel(deviceRepository, registryDb, "Читает и записывает", "SQL")
+Rel(eventPublisher, eventBus, "Устройство подключено, удалено, изменено", "Kafka")
+
+SHOW_LEGEND()
+@enduml

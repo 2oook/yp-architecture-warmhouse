@@ -1,0 +1,31 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Диаграмма компонентов Device Control Service (to-be)
+
+Container(apiGateway, "API Gateway", "Kong", "Единая точка входа")
+
+Container_Boundary(controlService, "Device Control Service") {
+    Component(commandController, "Command Controller", "Go, REST", "Эндпоинты отправки команды и просмотра её статуса")
+    Component(eventConsumer, "Event Consumer", "Go, Kafka", "Получает команды по сценариям и события об устройствах")
+    Component(commandService, "Command Service", "Go", "Проверка команды, создание, отслеживание статуса")
+    Component(commandRepository, "Command Repository", "Go", "Доступ к командам и данным об устройствах")
+    Component(mqttAdapter, "MQTT Adapter", "Go, MQTT", "Отправка команд устройствам, приём подтверждений")
+}
+
+ContainerDb(controlDb, "Device Control DB", "PostgreSQL", "Команды и их статусы, данные об устройствах")
+ContainerQueue(eventBus, "Event Bus", "Kafka", "Обмен событиями между сервисами")
+ContainerQueue(mqttBroker, "Device Broker", "MQTT", "Обмен сообщениями с устройствами")
+
+Rel(apiGateway, commandController, "Команды устройствам", "REST/JSON")
+Rel(eventBus, eventConsumer, "Команды по сценариям, события об устройствах", "Kafka")
+Rel(commandController, commandService, "Передаёт команду")
+Rel(eventConsumer, commandService, "Передаёт команду, обновляет данные об устройствах")
+Rel(commandService, commandRepository, "Читает и записывает команды")
+Rel(commandService, mqttAdapter, "Отправляет команду")
+Rel(mqttAdapter, commandService, "Передаёт подтверждение")
+Rel(commandRepository, controlDb, "Читает и записывает", "SQL")
+Rel(mqttAdapter, mqttBroker, "Публикует команды, получает подтверждения", "MQTT")
+
+SHOW_LEGEND()
+@enduml

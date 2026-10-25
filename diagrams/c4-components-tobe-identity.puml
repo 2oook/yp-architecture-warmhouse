@@ -1,0 +1,24 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Диаграмма компонентов Identity Service (to-be)
+
+Container(apiGateway, "API Gateway", "Kong", "Единая точка входа")
+
+Container_Boundary(identityService, "Identity Service") {
+    Component(authController, "Auth Controller", "Go, REST", "Эндпоинты регистрации, входа, проверки токена")
+    Component(userService, "User Service", "Go", "Регистрация пользователя, проверка учётных данных")
+    Component(tokenService, "Token Service", "Go, JWT", "Выдача и проверка токенов")
+    Component(userRepository, "User Repository", "Go", "Доступ к данным пользователей")
+}
+
+ContainerDb(identityDb, "Identity DB", "PostgreSQL", "Пользователи, учётные данные")
+
+Rel(apiGateway, authController, "Регистрация, вход, проверка токена", "REST/JSON")
+Rel(authController, userService, "Регистрирует, проверяет учётные данные")
+Rel(authController, tokenService, "Выдаёт и проверяет токен")
+Rel(userService, userRepository, "Читает и записывает пользователей")
+Rel(userRepository, identityDb, "Читает и записывает", "SQL")
+
+SHOW_LEGEND()
+@enduml
